@@ -46,20 +46,39 @@ class AuthController extends ApiController
 
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+         $validator = Validator::make($request->all(),[
+            'username' => ['required','string'],
+            'password' => ['required','string']
+        ]);
 
-        try {
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json(['error' => 'Invalid credentials'], 401);
-            }
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Could not create token'], 500);
+        if($validator->fails())
+        {
+            return $this->errorResponse($validator->messages(),422);
         }
 
-        return response()->json([
+        $user = User::where('username',$request->username)->first();
+        if(!$user)
+        {
+            return $this->errorResponse('user not found',401);
+        }
+
+        if(!Hash::check($request->password,$user->password))
+        {
+            return $this->errorResponse('password is wrong',401);
+        }
+
+
+        $credentials = $request->only('username', 'password');
+
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['error' => 'Invalid credentials'], 401);
+        }
+
+
+        return $this->successResponse([
             'token' => $token,
-            'expires_in' => auth('api')->factory()->getTTL() * 60,
-        ]);
+            'user'=> $user
+        ],200);
     }
 
     public function logout()
