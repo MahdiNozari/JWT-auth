@@ -9,33 +9,39 @@ use Illuminate\Support\Facades\Auth;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Http\Controllers\ApiController;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends ApiController
 {
     public function register(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+        $validator = Validator::make($request->all(),[
+            'name' => ['required','string'],
+            'username' => ['required','string','unique:users,username'],
+            'email' => ['required','email','unique:users,email'],
+            'password' => ['required','string'],
+            'c_password' => ['required','same:password'],
+
         ]);
+
+        if($validator->fails())
+        {
+            return $this->errorResponse($validator->messages(),422);
+        }
 
         $user = User::create([
             'name' => $request->name,
+            'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        try {
-            $token = JWTAuth::fromUser($user);
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Could not create token'], 500);
-        }
+        $token = JWTAuth::fromUser($user);
 
-        return response()->json([
+        return $this->successResponse([
             'token' => $token,
-            'user' => $user,
-        ], 201);
+            'user'=> $user
+        ],201);
     }
 
     public function login(Request $request)
