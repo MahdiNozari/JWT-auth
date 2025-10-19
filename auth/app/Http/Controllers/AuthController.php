@@ -74,55 +74,19 @@ class AuthController extends ApiController
         {
             return $this->errorResponse('password is wrong',401);
         }
+        
+        $token = JWTAuth::fromUser($user);
+        $refreshtoken = JWTAuth::claims(['type' => 'refresh'])->fromUser($user);
 
-
-        $credentials = $request->only('username', 'password');
-
-        dd($token);
-
-        if (!$token = JWTAuth::attempt($credentials)) {
-            return response()->json(['error' => 'Invalid credentials'], 401);
-        }
-
+        $cookie = cookie(
+            'refresh_token',
+            $refreshtoken,
+        );
 
         return $this->successResponse([
             'token' => $token,
             'user'=> $user
-        ],200);
+        ],200)->cookie($cookie);
     }
 
-    public function logout()
-    {
-        try {
-            JWTAuth::invalidate(JWTAuth::getToken());
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Failed to logout, please try again'], 500);
-        }
-
-        return response()->json(['message' => 'Successfully logged out']);
-    }
-
-    public function getUser()
-    {
-        try {
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
-            return response()->json($user);
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Failed to fetch user profile'], 500);
-        }
-    }
-
-    public function updateUser(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            $user->update($request->only(['name', 'email']));
-            return response()->json($user);
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Failed to update user'], 500);
-        }
-    }
 }
