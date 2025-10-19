@@ -36,17 +36,25 @@ class AuthController extends ApiController
             'password' => Hash::make($request->password),
         ]);
 
-        $token = JWTAuth::fromUser($user);
+    $token = JWTAuth::fromUser($user);
+
+    $refreshtoken = JWTAuth::claims(['type' => 'refresh'])->fromUser($user);
+
+    $cookie = cookie(
+        'refresh_token',
+        $refreshtoken,
+    );
+
 
         return $this->successResponse([
             'token' => $token,
             'user'=> $user
-        ],201);
+        ],201)->cookie($cookie);
     }
 
     public function login(Request $request)
     {
-         $validator = Validator::make($request->all(),[
+        $validator = Validator::make($request->all(),[
             'username' => ['required','string'],
             'password' => ['required','string']
         ]);
@@ -69,6 +77,8 @@ class AuthController extends ApiController
 
 
         $credentials = $request->only('username', 'password');
+
+        dd($token);
 
         if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json(['error' => 'Invalid credentials'], 401);
